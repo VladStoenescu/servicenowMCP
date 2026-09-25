@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 PROTOCOL_VERSION = "2024-11-05"
+SUPPORTED_PROTOCOL_VERSIONS = {"2024-10-07", PROTOCOL_VERSION}
 JSONRPC_VERSION = "2.0"
 
 
@@ -279,6 +280,14 @@ class ServiceNowMCPServer:
             return None
 
         if method == "initialize":
+            params = request.get("params") or {}
+            client_version = params.get("protocolVersion")
+            if client_version not in SUPPORTED_PROTOCOL_VERSIONS:
+                return error_response(
+                    request_id,
+                    -32602,
+                    f"Unsupported protocolVersion: {client_version}",
+                )
             return success_response(
                 request_id,
                 {
@@ -407,7 +416,8 @@ def main() -> int:
             request = read_message(stdin)
         except ServiceNowError as error:
             print(str(error), file=sys.stderr)
-            return 1
+            write_message(stdout, error_response(None, -32700, str(error)))
+            continue
 
         if request is None:
             return 0
