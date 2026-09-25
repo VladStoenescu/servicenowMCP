@@ -80,7 +80,7 @@ class MCPServerTests(unittest.TestCase):
         tool_names = [tool["name"] for tool in response["result"]["tools"]]
         self.assertEqual(tool_names, ["query_records", "get_record", "describe_table"])
 
-    def test_initialize_rejects_unsupported_protocol_version(self):
+    def test_initialize_negotiates_protocol_version(self):
         response = self.server.process_request(
             {
                 "jsonrpc": "2.0",
@@ -89,8 +89,9 @@ class MCPServerTests(unittest.TestCase):
                 "params": {"protocolVersion": "2023-01-01"},
             }
         )
-        self.assertEqual(response["error"]["code"], -32602)
-        self.assertIn("Unsupported protocolVersion", response["error"]["message"])
+        self.assertEqual(response["result"]["protocolVersion"], "2024-11-05")
+        self.assertEqual(response["result"]["capabilities"], {"tools": {}})
+        self.assertEqual(response["result"]["serverInfo"]["name"], "servicenow-local-mcp")
 
     def test_query_records_tool_dispatches(self):
         response = self.server.process_request(
@@ -159,6 +160,11 @@ class FramingErrorTests(unittest.TestCase):
 
     def test_incomplete_body_raises_servicenow_error(self):
         stream = io.BytesIO(b"Content-Length: 10\r\n\r\n{}")
+        with self.assertRaises(ServiceNowError):
+            read_message(stream)
+
+    def test_partial_header_eof_raises_servicenow_error(self):
+        stream = io.BytesIO(b"Content-Length: 2")
         with self.assertRaises(ServiceNowError):
             read_message(stream)
 

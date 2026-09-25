@@ -272,20 +272,13 @@ class ServiceNowMCPServer:
 
     def process_request(self, request: dict[str, Any]) -> dict[str, Any] | None:
         method = request.get("method")
+        has_request_id = "id" in request
         request_id = request.get("id")
 
         if method == "notifications/initialized":
             return None
 
         if method == "initialize":
-            params = request.get("params") or {}
-            client_version = params.get("protocolVersion")
-            if client_version != PROTOCOL_VERSION:
-                return error_response(
-                    request_id,
-                    -32602,
-                    f"Unsupported protocolVersion: {client_version}",
-                )
             return success_response(
                 request_id,
                 {
@@ -315,7 +308,7 @@ class ServiceNowMCPServer:
                 )
             return success_response(request_id, result)
 
-        if request_id is None:
+        if not has_request_id:
             return None
 
         return error_response(request_id, -32601, f"Method not found: {method}")
@@ -362,10 +355,14 @@ def error_response(request_id: Any, code: int, message: str) -> dict[str, Any]:
 
 def read_message(stream: Any) -> dict[str, Any] | None:
     content_length = None
+    saw_header_bytes = False
     while True:
         line = stream.readline()
         if not line:
+            if saw_header_bytes:
+                raise ServiceNowError("Incomplete message header.")
             return None
+        saw_header_bytes = True
         if line in (b"\r\n", b"\n"):
             break
         key, _, value = line.decode("utf-8").partition(":")
@@ -379,8 +376,6 @@ def read_message(stream: Any) -> dict[str, Any] | None:
         raise ServiceNowError("Missing Content-Length header.")
 
     body = stream.read(content_length)
-    if not body:
-        return None
     if len(body) != content_length:
         raise ServiceNowError("Incomplete message body.")
     try:
