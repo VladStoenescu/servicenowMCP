@@ -80,6 +80,18 @@ class MCPServerTests(unittest.TestCase):
         tool_names = [tool["name"] for tool in response["result"]["tools"]]
         self.assertEqual(tool_names, ["query_records", "get_record", "describe_table"])
 
+    def test_initialize_rejects_unsupported_protocol_version(self):
+        response = self.server.process_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "initialize",
+                "params": {"protocolVersion": "2023-01-01"},
+            }
+        )
+        self.assertEqual(response["error"]["code"], -32602)
+        self.assertIn("Unsupported protocolVersion", response["error"]["message"])
+
     def test_query_records_tool_dispatches(self):
         response = self.server.process_request(
             {

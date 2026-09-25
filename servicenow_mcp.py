@@ -278,6 +278,14 @@ class ServiceNowMCPServer:
             return None
 
         if method == "initialize":
+            params = request.get("params") or {}
+            client_version = params.get("protocolVersion")
+            if client_version != PROTOCOL_VERSION:
+                return error_response(
+                    request_id,
+                    -32602,
+                    f"Unsupported protocolVersion: {client_version}",
+                )
             return success_response(
                 request_id,
                 {
