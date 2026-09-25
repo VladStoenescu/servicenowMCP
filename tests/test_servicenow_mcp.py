@@ -93,17 +93,17 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(response["result"]["capabilities"], {"tools": {}})
         self.assertEqual(response["result"]["serverInfo"]["name"], "servicenow-local-mcp")
 
-    def test_initialize_rejects_unsupported_protocol_version(self):
+    def test_initialize_rejects_invalid_protocol_version_type(self):
         response = self.server.process_request(
             {
                 "jsonrpc": "2.0",
                 "id": 11,
                 "method": "initialize",
-                "params": {"protocolVersion": "2023-01-01"},
+                "params": {"protocolVersion": 123},
             }
         )
         self.assertEqual(response["error"]["code"], -32602)
-        self.assertIn("Unsupported protocolVersion", response["error"]["message"])
+        self.assertIn("protocolVersion must be a non-empty string", response["error"]["message"])
 
     def test_query_records_tool_dispatches(self):
         response = self.server.process_request(

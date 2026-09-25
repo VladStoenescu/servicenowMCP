@@ -36,6 +36,8 @@ export SERVICENOW_TOKEN="your-token"
 
 Add this to your project `opencode.json` or `~/.config/opencode/opencode.json`:
 
+The example uses OpenCode's official singular `provider` key from the config schema.
+
 ```json
 {
   "$schema": "https://opencode.ai/config.json",

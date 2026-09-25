@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import Any
 
 PROTOCOL_VERSION = "2024-11-05"
-SUPPORTED_PROTOCOL_VERSIONS = {"2024-10-07", PROTOCOL_VERSION}
 JSONRPC_VERSION = "2.0"
 
 
@@ -282,11 +281,11 @@ class ServiceNowMCPServer:
         if method == "initialize":
             params = request.get("params") or {}
             client_version = params.get("protocolVersion")
-            if client_version not in SUPPORTED_PROTOCOL_VERSIONS:
+            if not isinstance(client_version, str) or not client_version:
                 return error_response(
                     request_id,
                     -32602,
-                    f"Unsupported protocolVersion: {client_version}",
+                    "protocolVersion must be a non-empty string.",
                 )
             return success_response(
                 request_id,
@@ -424,8 +423,11 @@ def main() -> int:
         try:
             request = read_message(stdin)
         except ServiceNowError as error:
-            print(str(error), file=sys.stderr)
-            write_message(stdout, error_response(None, -32700, str(error)))
+            message = str(error)
+            print(message, file=sys.stderr)
+            write_message(stdout, error_response(None, -32700, message))
+            if message != "Invalid JSON payload.":
+                return 1
             continue
 
         if request is None:
