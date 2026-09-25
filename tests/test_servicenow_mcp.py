@@ -142,6 +142,10 @@ class MCPServerTests(unittest.TestCase):
         self.assertTrue(response["result"]["isError"])
         self.assertIn("limit must be between 1 and 100", response["result"]["content"][0]["text"])
 
+    def test_tools_list_notification_returns_no_response(self):
+        response = self.server.process_request({"jsonrpc": "2.0", "method": "tools/list"})
+        self.assertIsNone(response)
+
 
 class FramingTests(unittest.TestCase):
     def test_write_then_read_message_round_trip(self):

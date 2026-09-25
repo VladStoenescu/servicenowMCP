@@ -301,12 +301,18 @@ class ServiceNowMCPServer:
             )
 
         if method == "ping":
+            if not has_request_id:
+                return None
             return success_response(request_id, {})
 
         if method == "tools/list":
+            if not has_request_id:
+                return None
             return success_response(request_id, {"tools": self.list_tools()})
 
         if method == "tools/call":
+            if not has_request_id:
+                return None
             params = request.get("params") or {}
             try:
                 result = self.call_tool(str(params.get("name", "")), params.get("arguments") or {})
@@ -374,7 +380,10 @@ def read_message(stream: Any) -> dict[str, Any] | None:
         saw_header_bytes = True
         if line in (b"\r\n", b"\n"):
             break
-        key, _, value = line.decode("utf-8").partition(":")
+        decoded_line = line.decode("utf-8")
+        if ":" not in decoded_line:
+            raise ServiceNowError("Malformed header line.")
+        key, _, value = decoded_line.partition(":")
         if key.lower() == "content-length":
             try:
                 content_length = int(value.strip())
