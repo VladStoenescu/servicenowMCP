@@ -4,7 +4,7 @@ A minimal local MCP server for OpenCode that lets `deepseek-v4-flash` inspect Se
 
 ## What this provides
 
-- A local stdio MCP server implemented in Python (`/home/runner/work/servicenowMCP/servicenowMCP/servicenow_mcp.py`)
+- A local stdio MCP server implemented in Python (`/absolute/path/to/servicenowMCP/servicenow_mcp.py`)
 - OpenCode-compatible tools for:
   - `query_records`
   - `get_record`
@@ -60,7 +60,7 @@ Add this to your project `opencode.json` or `~/.config/opencode/opencode.json`:
         "type": "local",
         "command": [
           "python",
-          "/home/runner/work/servicenowMCP/servicenowMCP/servicenow_mcp.py"
+          "/absolute/path/to/servicenowMCP/servicenow_mcp.py"
         ]
       }
     }

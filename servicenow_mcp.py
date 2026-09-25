@@ -44,6 +44,7 @@ class ServiceNowConfig:
             base_url=normalize_instance_url(raw_instance),
             username=username,
             password=password,
+            token=token,
         )
 
 

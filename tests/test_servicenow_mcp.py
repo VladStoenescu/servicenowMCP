@@ -1,8 +1,11 @@
 import io
 import json
+import os
 import unittest
+from unittest import mock
 
 from servicenow_mcp import (
+    ServiceNowConfig,
     ServiceNowMCPServer,
     normalize_instance_url,
     read_message,
@@ -33,6 +36,19 @@ class NormalizeInstanceUrlTests(unittest.TestCase):
             normalize_instance_url("https://example.service-now.com/"),
             "https://example.service-now.com",
         )
+
+    def test_config_preserves_token_auth(self):
+        env = {
+            "SERVICENOW_INSTANCE": "dev12345",
+            "SERVICENOW_TOKEN": "token-value",
+        }
+        with mock.patch.dict(os.environ, env, clear=True):
+            config = ServiceNowConfig.from_env()
+
+        self.assertEqual(config.base_url, "https://dev12345.service-now.com")
+        self.assertEqual(config.token, "token-value")
+        self.assertIsNone(config.username)
+        self.assertIsNone(config.password)
 
 
 class MCPServerTests(unittest.TestCase):
