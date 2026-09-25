@@ -132,6 +132,26 @@ class ServiceNowClient:
             "result": response.get("result", {}),
         }
 
+    def _get_all_results(self, path: str, params: dict[str, Any], page_size: int = 100) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        offset = 0
+        while True:
+            response = self.request_json(
+                path,
+                {
+                    **params,
+                    "sysparm_limit": page_size,
+                    "sysparm_offset": offset,
+                },
+            )
+            page = response.get("result", [])
+            if not isinstance(page, list):
+                raise ServiceNowError("Expected a list result from ServiceNow.")
+            results.extend(page)
+            if len(page) < page_size:
+                return results
+            offset += len(page)
+
     def describe_table(self, table: str) -> dict[str, Any]:
         table_info = self.request_json(
             "/api/now/table/sys_db_object",
@@ -144,16 +164,15 @@ class ServiceNowClient:
             },
         ).get("result", [])
 
-        columns = self.request_json(
+        columns = self._get_all_results(
             "/api/now/table/sys_dictionary",
             {
                 "sysparm_query": f"name={table}^elementISNOTEMPTY",
                 "sysparm_fields": "element,column_label,internal_type,mandatory,max_length,reference",
-                "sysparm_limit": 100,
                 "sysparm_display_value": "true",
                 "sysparm_exclude_reference_link": "true",
             },
-        ).get("result", [])
+        )
 
         return {
             "table": table,
@@ -343,7 +362,10 @@ def read_message(stream: Any) -> dict[str, Any] | None:
             break
         key, _, value = line.decode("utf-8").partition(":")
         if key.lower() == "content-length":
-            content_length = int(value.strip())
+            try:
+                content_length = int(value.strip())
+            except ValueError as error:
+                raise ServiceNowError("Invalid Content-Length header.") from error
 
     if content_length is None:
         raise ServiceNowError("Missing Content-Length header.")
@@ -351,7 +373,12 @@ def read_message(stream: Any) -> dict[str, Any] | None:
     body = stream.read(content_length)
     if not body:
         return None
-    return json.loads(body.decode("utf-8"))
+    if len(body) != content_length:
+        raise ServiceNowError("Incomplete message body.")
+    try:
+        return json.loads(body.decode("utf-8"))
+    except json.JSONDecodeError as error:
+        raise ServiceNowError("Invalid JSON payload.") from error
 
 
 def write_message(stream: Any, message: dict[str, Any]) -> None:

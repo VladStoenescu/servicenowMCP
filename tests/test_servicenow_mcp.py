@@ -5,7 +5,9 @@ import unittest
 from unittest import mock
 
 from servicenow_mcp import (
+    ServiceNowClient,
     ServiceNowConfig,
+    ServiceNowError,
     ServiceNowMCPServer,
     normalize_instance_url,
     read_message,
@@ -22,6 +24,24 @@ class FakeClient:
 
     def describe_table(self, table):
         return {"tool": "describe_table", "table": table}
+
+
+class PagingClient(ServiceNowClient):
+    def __init__(self):
+        super().__init__(ServiceNowConfig(base_url="https://example.service-now.com", token="token"))
+        self.calls = []
+
+    def request_json(self, path, params=None):
+        self.calls.append((path, params))
+        if path == "/api/now/table/sys_db_object":
+            return {"result": [{"name": "incident", "label": "Incident"}]}
+        if path == "/api/now/table/sys_dictionary":
+            offset = params["sysparm_offset"]
+            limit = params["sysparm_limit"]
+            if offset == 0:
+                return {"result": [{"element": f"field_{index}"} for index in range(limit)]}
+            return {"result": [{"element": "field_100"}, {"element": "field_101"}]}
+        raise AssertionError(f"Unexpected path: {path}")
 
 
 class NormalizeInstanceUrlTests(unittest.TestCase):
@@ -105,6 +125,30 @@ class FramingTests(unittest.TestCase):
         write_message(output, message)
         output.seek(0)
         self.assertEqual(read_message(output), message)
+
+
+class ServiceNowClientTests(unittest.TestCase):
+    def test_describe_table_paginates_dictionary_results(self):
+        client = PagingClient()
+
+        payload = client.describe_table("incident")
+
+        self.assertEqual(payload["details"]["name"], "incident")
+        self.assertEqual(len(payload["columns"]), 102)
+        dictionary_calls = [call for call in client.calls if call[0] == "/api/now/table/sys_dictionary"]
+        self.assertEqual([call[1]["sysparm_offset"] for call in dictionary_calls], [0, 100])
+
+
+class FramingErrorTests(unittest.TestCase):
+    def test_invalid_content_length_raises_servicenow_error(self):
+        stream = io.BytesIO(b"Content-Length: nope\r\n\r\n{}")
+        with self.assertRaises(ServiceNowError):
+            read_message(stream)
+
+    def test_incomplete_body_raises_servicenow_error(self):
+        stream = io.BytesIO(b"Content-Length: 10\r\n\r\n{}")
+        with self.assertRaises(ServiceNowError):
+            read_message(stream)
 
 
 if __name__ == "__main__":
