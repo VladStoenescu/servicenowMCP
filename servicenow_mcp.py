@@ -65,7 +65,7 @@ class ServiceNowClient:
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
         if self._config.token:
-            headers["Authorization"] = "Bear" "er " + self._config.token
+            headers["Authorization"] = "Bearer " + self._config.token
         else:
             credentials = f"{self._config.username}:{self._config.password}".encode("utf-8")
             headers["Authorization"] = f"Basic {base64.b64encode(credentials).decode('ascii')}"

@@ -81,7 +81,6 @@ If your OpenCode installation uses a different provider identifier, keep the sam
 Run the focused test suite:
 
 ```bash
-cd /home/runner/work/servicenowMCP/servicenowMCP
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
